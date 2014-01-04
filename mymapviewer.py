@@ -21,9 +21,12 @@ class GroundStation(object):
         self.camera = pi3d.Camera(is_3d=False)
 
         #load ttf font and set the font colour to 'raspberry'
-        self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf", (221, 0, 170, 255))
+        self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf",
+                                    (180, 0, 140, 255),
+                                    background_color=(255, 255, 255, 180))
         self.arial_font.blend = True
         self.arial_font.mipmap = True
+        #self.arial_font.
 
         #starting input listeners#
         self.inputs = pi3d.InputEvents()
@@ -49,12 +52,13 @@ class GroundStation(object):
         self.tracked_object_position = [0, 0, 0]
         self.tracking = True
 
+        #camera should follow tracked object?
+        self.following_tracked = True
+
         #current zoom level
-        self.zoom = 2
+        self.zoom = 20
         #current button state
         self.button = 0
-
-        #self.x, self.y = 0, 0
 
         # mouse coordinates on screen
         self.pointer_x = 0
@@ -77,11 +81,11 @@ class GroundStation(object):
         self.flat_shader = pi3d.Shader("uv_flat")
         flat_shader = pi3d.Shader("uv_flat")
 
-
         self.gps_info = pi3d.String(font=self.arial_font, string="Now the Raspberry Pi really does rock")
         self.gps_info.set_shader(flat_shader)
 
         pointer_img = pi3d.Texture("textures/pointer.png", blend=True)
+        pointer_img.mipmap = True
         self.pointer = pi3d.Sprite(camera=self.camera, w=14, h=22, x=0, y=0, z=0.1)
         self.pointer.set_draw_details(flat_shader, [pointer_img], 0, 0)
 
@@ -246,15 +250,20 @@ class GroundStation(object):
             #asks to update the gui alone
             self.queue_draw(gui_only=True)
 
+        if self.following_tracked:
+            self.view_longitude, self.view_latitude = longitude, latitude
+            self.queue_draw()
+
     def set_attitude(self, roll, pitch, yaw=0):
         """
         updates the object attitude, called from telemtry reader, written directly on self.horizon.
         should probably be changed
         """
         if self.horizon.tilt != pitch or self.horizon.roll != roll or self.horizon.yaw != yaw:
-            self.horizon.tilt = pitch
-            self.horizon.roll = roll
-            self.horizon.yaw = yaw
+            #self.horizon.tilt = pitch
+            #self.horizon.roll = roll
+            #self.horizon.yaw = yaw
+            self.horizon.set_attitude(roll, pitch, yaw)
             self.queue_draw(gui_only=True)
 
     def draw_tiles(self):
