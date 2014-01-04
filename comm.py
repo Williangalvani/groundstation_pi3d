@@ -148,7 +148,7 @@ class TelemetryReader():
             long_list = answer[6:10]
             latitude = self.decode32(lat_list)/10000000.0
             longitude = self.decode32(long_list)/10000000.0
-            #print longitude,latitude
+            print longitude,latitude, answer[0:2]
             return longitude,latitude
         return (0,0)
 
