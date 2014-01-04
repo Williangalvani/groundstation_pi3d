@@ -10,7 +10,9 @@ This project is a groundstation software to communicate with a remote quadcopter
 So far it contains:
 
 -Serial communication to read quadcopter data.
+
 -Google maps(with offline cache) to plot current quadcopter position.
+
 -Navball to see quadcopter orientation.
 
 The serial communication finds the first available port, and connects. Then it tries to communicate using the multiwii communication protocol.
