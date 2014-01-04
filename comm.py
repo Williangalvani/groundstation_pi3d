@@ -42,8 +42,9 @@ class TelemetryReader():
                     while self.run:
                         for i in range(10):
                             if i%3==0:
-                                lat,long = self.read_gps()
+                                lat,long,sats = self.read_gps()
                                 self.window.set_tracked_position(lat,long,self.attitude[2])
+                                self.window.set_data("gps_sats",sats)
                             else:
                                 self.attitude = self.read_attitude()
                                 self.window.set_attitude(*self.attitude)
@@ -148,9 +149,9 @@ class TelemetryReader():
             long_list = answer[6:10]
             latitude = self.decode32(lat_list)/10000000.0
             longitude = self.decode32(long_list)/10000000.0
-            print longitude,latitude, answer[0:2]
-            return longitude,latitude
-        return (0,0)
+            #print longitude,latitude, answer[0:2]
+            return longitude,latitude,answer[1]
+        return (0,0,0)
 
     def read_attitude(self):
         answer = self.MSPquery(MSP_ATTITUDE)

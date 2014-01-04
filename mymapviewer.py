@@ -1,22 +1,15 @@
 #!/usr/bin/python
-from __future__ import absolute_import, division, print_function, unicode_literals
-
+from __future__ import absolute_import, division, unicode_literals
 from os.path import abspath, dirname
-
-#http://maps.googleapis.com/maps/api/staticmap?center=#X,#Y&zoom=#Z&size=200x200&sensor=false
-WHERE_AM_I = abspath(dirname(__file__))
 from tileLoader import TileLoader
 from math import ceil
 from datetime import datetime
 from horizon.horizon import Horizon
 from comm import TelemetryReader
-
-
 import pi3d
 
-#load ttf font and set the font colour to 'raspberry'
-arialFont = pi3d.Font("fonts/FreeMonoBoldOblique.ttf", (221, 0, 170, 255))
-
+WHERE_AM_I = abspath(dirname(__file__))
+flat_shader = pi3d.Shader("uv_flat")
 
 class GroundStation(object):
 
@@ -26,6 +19,11 @@ class GroundStation(object):
         pi3d.Light((0, 0, 10))
         self.shader = pi3d.Shader("uv_flat")
         self.camera = pi3d.Camera(is_3d=False)
+
+        #load ttf font and set the font colour to 'raspberry'
+        self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf", (221, 0, 170, 255))
+        self.arial_font.blend = True
+        self.arial_font.mipmap = True
 
         #starting input listeners#
         self.inputs = pi3d.InputEvents()
@@ -76,12 +74,14 @@ class GroundStation(object):
         #should reload the tiles? set on moving the map
         self.updated = True
 
+        self.flat_shader = pi3d.Shader("uv_flat")
         flat_shader = pi3d.Shader("uv_flat")
 
-        self.gps_info = pi3d.String(font=arialFont, string="Now the Raspberry Pi really does rock")
+
+        self.gps_info = pi3d.String(font=self.arial_font, string="Now the Raspberry Pi really does rock")
         self.gps_info.set_shader(flat_shader)
 
-        pointer_img = pi3d.Texture("textures/pointer.pn       ### starting display, and 3d part###g", blend=True)
+        pointer_img = pi3d.Texture("textures/pointer.png", blend=True)
         self.pointer = pi3d.Sprite(camera=self.camera, w=14, h=22, x=0, y=0, z=0.1)
         self.pointer.set_draw_details(flat_shader, [pointer_img], 0, 0)
 
@@ -91,7 +91,7 @@ class GroundStation(object):
 
         waypoint_img = pi3d.Texture("textures/waypoint.png", blend=True)
         self.waypoint_sprite = pi3d.Sprite(camera=self.camera, w=20, h=20, x=0, y=0, z=0.1)
-        self.waypoint_sprite.set_draw_details(flat_shader, [waypoint_img], 0, 0)
+        self.waypoint_sprite.set_draw_details(flat_shader, [crosshair_img], 0, 0)
 
         tracked_img = pi3d.Texture("textures/gpspointer6060.png", blend=True)
         self.tracked_sprite = pi3d.Sprite(camera=self.camera, w=60, h=60, x=0, y=0, z=0.1)
@@ -104,9 +104,9 @@ class GroundStation(object):
         #shows the navball
         self.horizon = Horizon(self.camera, self.display)
 
-        #reads telemetry from the serial port
+        #reads telemetry from the serial portarialFont
         self.telemetry_reader = TelemetryReader(self)
-
+        self.data = {}
         self.main_loop()
 
     def zoom_in(self):
@@ -187,7 +187,27 @@ class GroundStation(object):
         """
         pending = len(self.tile_loader.pending_tiles) + len(self.tile_loader.loading_tiles)
         self.gps_info._unload_opengl()
-        self.gps_info = pi3d.String(font=arialFont, string="{0} tiles pending".format(pending))
+
+        string = "{0} tiles pending\nlat:{1}\nlong:{2}".format(pending,
+                                                               self.view_latitude,
+                                                               self.view_longitude)
+        for i in self.data.keys():
+            string = string + "\n{0}:{1}".format(i, self.data[i])
+
+        self.gps_info = pi3d.String(font=self.arial_font,
+                                    string=string,
+                                    x=-self.width/2, y=self.height/2, z=3,
+                                    is_3d=False,
+                                    camera=self.camera,
+                                    justify='L',
+                                    size=0.15)
+        bounds = self.gps_info.get_bounds()
+        size = bounds[4] - bounds[1]
+        self.gps_info.position(-self.width/2,
+                               self.height/2-size/2,
+                               3)
+
+        self.gps_info.set_shader(self.flat_shader)
         self.gps_info.draw()
 
     def draw_points(self):
@@ -318,6 +338,7 @@ class GroundStation(object):
             #draws mouse pointer
             self.pointer.position(self.pointer_x - self.width/2, -self.pointer_y+self.height/2, 0.1)
             self.pointer.draw()
+            self.draw_info()
 
     def draw_instruments(self):
         self.horizon.update()
@@ -342,6 +363,9 @@ class GroundStation(object):
             self.button = 0
         if zoom:
             self.on_scroll(zoom)
+
+    def set_data(self, string, value):
+        self.data[string] = value
 
     def main_loop(self):
         """
