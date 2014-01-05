@@ -30,7 +30,7 @@ class TileLoader():
         self.list_lock = threading.Lock()
         self.ui_lock = threading.Lock()
         self.run = True
-        for i in range(10):
+        for i in range(5):
             #t = threading.Thread(target=self.loading_thread,args=(self.pending_tiles, self.cache, self.list_lock, i))
             t = FuncThread(self.loading_thread, self.pending_tiles, self.cache, self.list_lock, i)
             self.threads.append(t)
