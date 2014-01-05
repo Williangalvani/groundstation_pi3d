@@ -1,10 +1,15 @@
 from messages import *
 from serial.tools import list_ports
-import os 
-#from protocol import *
-import serial
+import os
 import time
 import threading
+serial_available = False
+try:
+    import serial
+    serial_available = True
+except:
+    pass
+
 
 class FuncThread(threading.Thread):
     def __init__(self, target, *args):
@@ -20,13 +25,15 @@ class FuncThread(threading.Thread):
 class TelemetryReader():
 
     def __init__(self,window):
-        self.run = True
-        self.connected = False
-        self.window = window
-        self.thread = FuncThread(self.loop)
-        self.thread.start()
-        self.attitude = [0,0,0]
-
+        if serial_available:
+            self.run = True
+            self.connected = False
+            self.window = window
+            self.thread = FuncThread(self.loop)
+            self.thread.start()
+            self.attitude = [0,0,0]
+        else:
+            print("could not load serial module!")
 
     def loop(self):
         while self.run and not self.connected:
@@ -34,8 +41,8 @@ class TelemetryReader():
                 self.ser = serial.Serial(self.list_serial_ports()[0],115200,timeout=1)
                 self.ser.flushInput()
                 self.connected = True
-            except Exception, e:
-                print "could not connect, retrying in 3s\n", e
+            except Exception as e:
+                print("could not connect, retrying in 3s\n", e )
                 time.sleep(3)
             if self.connected:
                 try:
@@ -50,9 +57,9 @@ class TelemetryReader():
                                 self.window.set_attitude(*self.attitude)
 
                             time.sleep(0.05)
-                except Exception, e:
+                except Exception as e:
                     self.connected = False
-                    print e
+                    print (e)
 
     def stop(self):
         self.run = False
@@ -96,13 +103,13 @@ class TelemetryReader():
         #print 'data' , data
         #print checksum, receivedChecksum
         if command != expectedCommand:
-            print "commands dont match!" , command, expectedCommand
+            print( "commands dont match!" , command, expectedCommand)
             self.ser.flushInput()
             return None
         if checksum == receivedChecksum:
             return data
         else:
-            print 'lost packet!'
+            print ('lost packet!')
             return None
 
     def MSPquery(self,command    ):

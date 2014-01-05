@@ -2,9 +2,6 @@ __author__ = 'Will'
 import urllib
 from os.path import abspath, dirname, join
 import os
-from PIL import Image
-import traceback
-import time
 import pi3d
 WHERE_AM_I = abspath(dirname(__file__))
 
@@ -20,8 +17,8 @@ def try_to_remove(filename):
     try:
         os.remove(filename)
         return True
-    except Exception, e:
-        print "could not delete" , filename, e
+    except Exception as e:
+        print( "could not delete" , filename, e)
         return False
 
 class ImageLoader(object):
@@ -36,8 +33,8 @@ class ImageLoader(object):
     def remove(self,x,y,z):
         level_dir = join(cachedir, str(z))
         filename = join(level_dir, "{0}-{1}.png".format(x,y))
-        print "removing" , filename
-        print try_to_remove(filename)
+        print ("removing" , filename)
+        print (try_to_remove(filename))
 
     def get_image(self, lat, long, level):
         got_image = False
@@ -51,13 +48,13 @@ class ImageLoader(object):
             image = open(filename)
             image.close()
             got_image = True
-        except Exception , e:
+        except Exception as e:
             #print e
             pass
 
         if not got_image:
             image_url = self.address.format(lat, long, level)
-            print "miss, loading image from " , image_url
+            print ("miss, loading image from " , image_url)
             temp_file = open(filename,'wb')
             temp_file.write(urllib.urlopen(image_url).read())
             temp_file.close()

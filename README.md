@@ -20,6 +20,8 @@ The serial communication finds the first available port, and connects. Then it t
 
 ### Requirements: ###
 Pi3D (https://github.com/tipam/pi3d#setup-on-the-raspberry-pi)
+pyserial
+
 
 just do :
 >sudo pip install pi3d   

@@ -7,6 +7,9 @@ from datetime import datetime
 from horizon.horizon import Horizon
 from comm import TelemetryReader
 import pi3d
+from utils.timeit import timeit
+from PIL import ImageFont, ImageDraw, Image
+from gui.string import MyFont
 
 WHERE_AM_I = abspath(dirname(__file__))
 flat_shader = pi3d.Shader("uv_flat")
@@ -15,7 +18,7 @@ class GroundStation(object):
 
     def __init__(self, width=-1, height=-1):
         ### starting display, and 3d part###
-        self.display = pi3d.Display.create(x=0, y=0, w=width, h=height, frames_per_second=10)
+        self.display = pi3d.Display.create(x=0, y=0, w=width, h=height, frames_per_second=20)
         pi3d.Light((0, 0, 10))
         self.shader = pi3d.Shader("uv_flat")
         self.camera = pi3d.Camera(is_3d=False)
@@ -24,9 +27,20 @@ class GroundStation(object):
         self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf",
                                     (180, 0, 140, 255),
                                     background_color=(255, 255, 255, 180))
+
+        self.pil_font = usr_font = ImageFont.truetype("fonts/FreeSans.ttf", 10)
+
         self.arial_font.blend = True
         self.arial_font.mipmap = True
         #self.arial_font.
+
+        self.flat_shader = pi3d.Shader("uv_flat")
+        flat_shader = pi3d.Shader("uv_flat")
+
+        self.my_font = MyFont(self.camera,"fonts/FreeMonoBoldOblique.ttf",
+                                    (180, 0, 140, 255),
+                                    background_color=(255, 255, 255, 180))
+        self.my_font.set_shader(self.flat_shader)
 
         #starting input listeners#
         self.inputs = pi3d.InputEvents()
@@ -53,7 +67,7 @@ class GroundStation(object):
         self.tracking = True
 
         #camera should follow tracked object?
-        self.following_tracked = True
+        self.following_tracked = False#True
 
         #current zoom level
         self.zoom = 20
@@ -71,15 +85,16 @@ class GroundStation(object):
         #currently loaded tiles
         self.tiles = []
         self.tiles_set = set()
+        self.current_center_tile = (0, 0)
 
         #draw gui only, the avoid redrawing the tiles
         self.draw_gui_only_flag = False
 
         #should reload the tiles? set on moving the map
         self.updated = True
+        self.tile_list_updated = True
 
-        self.flat_shader = pi3d.Shader("uv_flat")
-        flat_shader = pi3d.Shader("uv_flat")
+
 
         self.gps_info = pi3d.String(font=self.arial_font, string="Now the Raspberry Pi really does rock")
         self.gps_info.set_shader(flat_shader)
@@ -98,9 +113,14 @@ class GroundStation(object):
         self.waypoint_sprite.set_draw_details(flat_shader, [crosshair_img], 0, 0)
 
         tracked_img = pi3d.Texture("textures/gpspointer6060.png", blend=True)
-        self.tracked_sprite = pi3d.Sprite(camera=self.camera, w=60, h=60, x=0, y=0, z=0.1)
+        self.tracked_sprite = pi3d.Sprite(camera=self.camera, w=60, h=60, x=0, y=0, z=10)
+        self.tracked_sprite.rotateToY(0)
+        self.tracked_sprite.rotateToX(0)
+        self.tracked_sprite.rotateToZ(0)
         self.tracked_sprite.set_draw_details(flat_shader, [tracked_img], 0, 0)
         self.tracked_sprite.scale(0.8, 0.8, 0.8)
+
+        self.info_sprite = pi3d.Sprite(camera=self.camera, w=100, h=100, x=0, y=0, z=0.1)
 
         #the tile loader gives the tiles around the current position
         self.tile_loader = TileLoader(self)
@@ -129,7 +149,7 @@ class GroundStation(object):
                 self.zoom_in()
             elif zoom_in < 0:
                 self.zoom_out()
-            self.queue_draw()
+            self.queue_draw(tile=True)
             self.last_scroll = datetime.now()
             print(self.zoom)
 
@@ -185,6 +205,20 @@ class GroundStation(object):
         """
         self.crosshair.draw()
 
+    @timeit
+    def create_info_image(self):
+        pending = len(self.tile_loader.pending_tiles) + len(self.tile_loader.loading_tiles)
+
+        string = "{0} tiles pending\nlat:{1}\nlong:{2}".format(pending,
+                                                               self.view_latitude,
+                                                               self.view_longitude)
+        for i in self.data.keys():
+            string = string + "\n{0}:{1}".format(i, self.data[i])
+
+        self.my_font.show_text(string,0,0)
+
+
+    @timeit
     def draw_info(self):
         """
         draws text data on the screen, currently, gps data and pending tiles to draw
@@ -197,6 +231,8 @@ class GroundStation(object):
                                                                self.view_longitude)
         for i in self.data.keys():
             string = string + "\n{0}:{1}".format(i, self.data[i])
+
+
 
         self.gps_info = pi3d.String(font=self.arial_font,
                                     string=string,
@@ -266,6 +302,7 @@ class GroundStation(object):
             self.horizon.set_attitude(roll, pitch, yaw)
             self.queue_draw(gui_only=True)
 
+
     def draw_tiles(self):
         """
         Core map-drawing function
@@ -280,21 +317,27 @@ class GroundStation(object):
         if self.updated:
             # checking which tiles to reload #
             new_set = set()
-            new_tiles = self.tile_loader.load_area(self.view_longitude,
-                                                   self.view_latitude,
-                                                   self.zoom,
-                                                   tiles_x,
-                                                   tiles_y)
 
-            ## adds new tiles, unload the removed ones from the gpu ##
-            for line in new_tiles:
-                for tile in line:
-                    new_set.add(tile)
-            for tile in self.tiles_set:
-                if tile not in new_set:
-                    tile._unload_opengl()
-            self.tiles_set = new_set
-            self.tiles = new_tiles
+            new_center_tile = self.tile_loader.coord_to_gmap_tile_int(self.view_longitude,self.view_latitude,self.zoom)
+            if new_center_tile != self.current_center_tile or self.tile_list_updated:
+                #print "reloading" , new_center_tile , self.current_center_tile
+                new_tiles = self.tile_loader.load_area(self.view_longitude,
+                                                       self.view_latitude,
+                                                       self.zoom,
+                                                       tiles_x,
+                                                       tiles_y)
+                ## adds new tiles, unload the removed ones from the gpu ##
+                for line in new_tiles:
+                    for tile in line:
+                        new_set.add(tile)
+                for tile in self.tiles_set:
+                    if tile not in new_set:
+                        tile._unload_opengl()
+                self.tiles = new_tiles
+                self.tiles_set = new_set
+
+            self.current_center_tile = new_center_tile
+
 
             ### starts the tile loading and drawing
             tile_number = 0
@@ -330,12 +373,14 @@ class GroundStation(object):
                 for sprite in sprites:
                     sprite.draw()
 
+    @timeit
     def draw(self):
         """
         high level draw function, calls the lower ones
         """
         self.draw_tiles()
         self.draw_gui()
+
 
     def draw_gui(self):
         if self.draw_gui_only_flag:
@@ -348,16 +393,18 @@ class GroundStation(object):
             self.pointer.position(self.pointer_x - self.width/2, -self.pointer_y+self.height/2, 0.1)
             self.pointer.draw()
             self.draw_info()
+            self.create_info_image()
 
     def draw_instruments(self):
         self.horizon.update()
 
-    def queue_draw(self, gui_only=False):
+    def queue_draw(self, gui_only=False,tile=False):
         """
         schedules a draw on next tick, may be complete, or gui-only
         """
         self.updated = not gui_only
         self.draw_gui_only_flag = True
+        self.tile_list_updated = tile
 
     def update_mouse(self):
         """

@@ -42,6 +42,7 @@ class Horizon():
         self.tilt = pitch
         self.yaw = yaw
         self.initialized = True
+        #print roll,pitch,yaw
 
     def update(self):
         if self.initialized:

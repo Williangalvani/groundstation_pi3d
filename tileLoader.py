@@ -11,7 +11,6 @@ class FuncThread(threading.Thread):
     def __init__(self, target, *args):
         self._target = target
         self._args = args
-
         threading.Thread.__init__(self)
 
     def run(self):
@@ -32,6 +31,7 @@ class TileLoader():
         self.ui_lock = threading.Lock()
         self.run = True
         for i in range(10):
+            #t = threading.Thread(target=self.loading_thread,args=(self.pending_tiles, self.cache, self.list_lock, i))
             t = FuncThread(self.loading_thread, self.pending_tiles, self.cache, self.list_lock, i)
             self.threads.append(t)
             t.start()
@@ -46,6 +46,14 @@ class TileLoader():
         tile_x = (2 ** zoom) * ((norm_x + 1) / 2)
         tile_y = (2 ** zoom) * ((1 - norm_y) / 2)
         return tile_x, tile_y
+
+    def coord_to_gmap_tile_int(self, lon,lat, zoom):
+        sin_phi = sin(lat * pi / 180)
+        norm_x = lon / 180
+        norm_y = (0.5 * log((1 + sin_phi) / (1 - sin_phi))) / pi
+        tile_x = (2 ** zoom) * ((norm_x + 1) / 2)
+        tile_y = (2 ** zoom) * ((1 - norm_y) / 2)
+        return int(tile_x), int(tile_y)
 
     def dpix_to_dcoord(self,x, y0,y, zoom):
         sin_phi =  cos(y0 * pi / 180)
@@ -101,17 +109,17 @@ class TileLoader():
                     #img = cairo.ImageSurface.create_from_png(tile)
                     cache[name] = img
                     self.loading_tiles.remove((x,y,z))
-                except Exception, e:
+                except Exception as e:
                     if "Unsupported" in str(e) or "reading" or "identify" in str(e):
                         self.loader.remove(x,y,z)
-
-                    print "error {2} loading tile {0} at thread {1}! ".format( name,id,e)
+                    print("error {2} loading tile {0} at thread {1}".format( name,id,e))
                     time.sleep(0.2)
                     self.loading_tiles.remove((x,y,z))
                     pending.add((x,y,z))
                     #print traceback.format_exc()
+
                 self.ui_lock.acquire()
-                self.window.queue_draw()
+                self.window.queue_draw(tile=True)
                 self.ui_lock.release()
             else:
                 lock.release()
