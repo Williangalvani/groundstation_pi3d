@@ -9,7 +9,6 @@ from comm import TelemetryReader
 import pi3d
 from utils.timeit import timeit
 from PIL import ImageFont, ImageDraw, Image
-from gui.string import MyFont
 
 WHERE_AM_I = abspath(dirname(__file__))
 flat_shader = pi3d.Shader("uv_flat")
@@ -27,23 +26,11 @@ class GroundStation(object):
             self.camera = pi3d.Camera(is_3d=False)
             self.camera.was_moved = False
 
-            # self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf",
-            #                             (180, 0, 140, 255),
-            #                             background_color=(255, 255, 255, 180))
-            #
-            # self.pil_font = usr_font = ImageFont.truetype("fonts/FreeSans.ttf", 10)
-
             self.arial_font.blend = True
             self.arial_font.mipmap = True
 
             self.flat_shader = pi3d.Shader("uv_flat")
             #flat_shader = pi3d.Shader("uv_flat")
-
-            self.my_font = MyFont(self.camera,
-                                  "fonts/FreeMonoBoldOblique.ttf",
-                                  (180, 0, 140, 255),
-                                  background_color=(255, 255, 255, 180))
-            self.my_font.set_shader(self.flat_shader)
 
             #starting input listeners#
             self.inputs = pi3d.InputEvents()
