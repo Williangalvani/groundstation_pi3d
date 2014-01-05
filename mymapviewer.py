@@ -8,7 +8,6 @@ from horizon.horizon import Horizon
 from comm import TelemetryReader
 import pi3d
 from utils.timeit import timeit
-from PIL import ImageFont, ImageDraw, Image
 
 WHERE_AM_I = abspath(dirname(__file__))
 flat_shader = pi3d.Shader("uv_flat")
@@ -30,13 +29,10 @@ class GroundStation(object):
                                          (180, 0, 140, 255),
                                          background_color=(255, 255, 255, 180))
 
-            self.arial_font.blend = True
+            self.arial_font.blend = Truelsu
             self.arial_font.mipmap = True
 
             self.flat_shader = pi3d.Shader("uv_flat")
-            #flat_shader = pi3d.Shader("uv_flat")
-
-            #self.my_font.set_shader(self.flat_shader)
 
             #starting input listeners#
             self.inputs = pi3d.InputEvents()
