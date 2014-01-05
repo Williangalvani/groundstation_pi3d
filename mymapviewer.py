@@ -104,15 +104,15 @@ class GroundStation(object):
             pointer_img = pi3d.Texture("textures/pointer.png", blend=True)
             pointer_img.mipmap = True
             self.pointer = pi3d.Sprite(camera=self.camera, w=14, h=22, x=0, y=0, z=0.1)
-            self.pointer.set_draw_details(flat_shader, [pointer_img], 0, 0)
+            self.pointer.set_draw_details(self.flat_shader, [pointer_img], 0, 0)
 
             crosshair_img = pi3d.Texture("textures/crosshair4040.png", blend=True)
             self.crosshair = pi3d.Sprite(camera=self.camera, w=40, h=40, x=0, y=0, z=0.1)
-            self.crosshair.set_draw_details(flat_shader, [crosshair_img], 0, 0)
+            self.crosshair.set_draw_details(self.flat_shader, [crosshair_img], 0, 0)
 
             self.waypoint_img = pi3d.Texture("textures/crosshair4040.png", blend=True)
             self.waypoint_sprite = pi3d.Sprite(camera=self.camera, w=20, h=20, x=0, y=0, z=0.1)
-            self.waypoint_sprite.set_draw_details(flat_shader, [self.waypoint_img], 0, 0)
+            self.waypoint_sprite.set_draw_details(self.flat_shader, [self.waypoint_img], 0, 0)
             self.waypoint_sprite_list = []
 
             tracked_img = pi3d.Texture("textures/gpspointer6060.png", blend=True)
@@ -120,7 +120,7 @@ class GroundStation(object):
             self.tracked_sprite.rotateToY(0)
             self.tracked_sprite.rotateToX(0)
             self.tracked_sprite.rotateToZ(0)
-            self.tracked_sprite.set_draw_details(flat_shader, [tracked_img], 0, 0)
+            self.tracked_sprite.set_draw_details(self.flat_shader, [tracked_img], 0, 0)
             self.tracked_sprite.scale(0.8, 0.8, 0.8)
 
             self.info_sprite = pi3d.Sprite(camera=self.camera, w=100, h=100, x=0, y=0, z=0.1)

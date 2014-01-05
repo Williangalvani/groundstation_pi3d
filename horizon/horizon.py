@@ -36,7 +36,6 @@ class Horizon():
         sprite.set_draw_details(flat_shader, [img], 0, 0)
         return sprite
 
-
     def set_attitude(self, roll, pitch, yaw):
         self.roll = roll
         self.tilt = pitch
