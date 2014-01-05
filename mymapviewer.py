@@ -29,7 +29,7 @@ class GroundStation(object):
                                          (180, 0, 140, 255),
                                          background_color=(255, 255, 255, 180))
 
-            self.arial_font.blend = Truelsu
+            self.arial_font.blend = True
             self.arial_font.mipmap = True
 
             self.flat_shader = pi3d.Shader("uv_flat")
