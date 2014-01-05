@@ -27,11 +27,11 @@ class GroundStation(object):
             self.camera = pi3d.Camera(is_3d=False)
             self.camera.was_moved = False
 
-            self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf",
-                                        (180, 0, 140, 255),
-                                        background_color=(255, 255, 255, 180))
-
-            self.pil_font = usr_font = ImageFont.truetype("fonts/FreeSans.ttf", 10)
+            # self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf",
+            #                             (180, 0, 140, 255),
+            #                             background_color=(255, 255, 255, 180))
+            #
+            # self.pil_font = usr_font = ImageFont.truetype("fonts/FreeSans.ttf", 10)
 
             self.arial_font.blend = True
             self.arial_font.mipmap = True
