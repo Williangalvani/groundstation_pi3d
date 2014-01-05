@@ -36,7 +36,7 @@ class GroundStation(object):
             self.flat_shader = pi3d.Shader("uv_flat")
             #flat_shader = pi3d.Shader("uv_flat")
 
-            self.my_font.set_shader(self.flat_shader)
+            #self.my_font.set_shader(self.flat_shader)
 
             #starting input listeners#
             self.inputs = pi3d.InputEvents()
