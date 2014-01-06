@@ -26,8 +26,8 @@ class GroundStation(object):
             self.camera.was_moved = False
 
             self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf",
-                                         (180, 0, 140, 255),
-                                         background_color=(255, 255, 255, 180))
+                                        (180, 0, 140, 255),
+                                        background_color=(255, 255, 255, 180))
 
             self.arial_font.blend = True
             self.arial_font.mipmap = True
@@ -203,12 +203,10 @@ class GroundStation(object):
             usually takes 1~5ms
             250ms when updating!
             """
-            #print((datetime.now() - self.last_info_update).seconds)
-            if (datetime.now() - self.last_info_update).seconds > 3:
-                #print "got in"
-                pending = len(self.tile_loader.pending_tiles) + len(self.tile_loader.loading_tiles)
-                self.gps_info._unload_opengl()
 
+            if (datetime.now() - self.last_info_update).seconds > 3:
+
+                self.gps_info._unload_opengl()
                 # string = "{0} tiles pending\nlat:{1}\nlong:{2}".format(pending,
                 #                                                        self.view_latitude,
                 #                                                        self.view_longitude)
@@ -239,9 +237,11 @@ class GroundStation(object):
             """
             draws each of the self.points on the screen as circles
             """
+
             if self.updated:
-                if len(self.points) != len(self.waypoint_sprite_list):
-                    for point in self.points:
+                number_of_points = len(self.points)
+                if number_of_points != len(self.waypoint_sprite_list):
+                    for i in range(number_of_points):
                         sprite = pi3d.Sprite(camera=self.camera, w=20, h=20, x=0, y=0, z=1)
                         sprite.set_draw_details(self.flat_shader, [self.waypoint_img], 0, 0)
                         self.waypoint_sprite_list.append(sprite)
@@ -253,8 +253,6 @@ class GroundStation(object):
                                                           self.view_latitude,
                                                           self.zoom)
                     sprite.position(x, -y, 10)
-                    #sprite.draw()
-                    #print x,y
 
         #@timeit
         def draw_tracked_object(self):
@@ -270,8 +268,9 @@ class GroundStation(object):
                                                       point[1],
                                                       self.view_latitude,
                                                       self.zoom)
-                self.tracked_sprite.position(x, -y, 0.1)
+                self.tracked_sprite.position(x, -y, 1)
                 self.tracked_sprite.rotateToZ(-point[2])
+                self.tracked_sprite.draw()
 
         def set_tracked_position(self, longitude, latitude, yaw):
             """
@@ -282,23 +281,19 @@ class GroundStation(object):
                 #asks to update the gui alone
                 self.queue_draw(gui_only=True)
 
-            if self.following_tracked and self.data.has_key("gps_sats") :
+            if self.following_tracked and "gps_sats" in self.data:
                 if self.data["gps_sats"] >= 3:
-                    self.view_longitude, self.view_latitude = longitude, latitude
+                    self.set_focus(longitude, latitude)
                     self.queue_draw(tile=True)
 
         def set_attitude(self, roll, pitch, yaw=0):
             """
-            updates the object attitude, called from telemtry reader, written directly on self.horizon.
+            updates the object attitude, called from telemetry reader, written directly on self.horizon.
             should probably be changed
             """
             if self.horizon.tilt != pitch or self.horizon.roll != roll or self.horizon.yaw != yaw:
-                #self.horizon.tilt = pitch
-                #self.horizon.roll = roll
-                #self.horizon.yaw = yaw
                 self.horizon.set_attitude(roll, pitch, yaw)
                 self.queue_draw(gui_only=True)
-
 
         def draw_tiles(self):
             """
@@ -312,18 +307,18 @@ class GroundStation(object):
             tiles_x = int(ceil(span_x/256.0))
             tiles_y = int(ceil(span_y/256.0))
             if self.updated:
-                # checking which tiles to reload #
-
+                # checks if the centered tile changed, so the tile set has to be reloaded
                 new_center_tile = self.tile_loader.coord_to_gmap_tile_int(self.view_longitude,
                                                                           self.view_latitude,
                                                                           self.zoom)
+
                 if new_center_tile != self.current_center_tile or self.tile_list_updated:
-                    #print "reloading" , new_center_tile , self.current_center_tile
                     new_tiles = self.tile_loader.load_area(self.view_longitude,
                                                            self.view_latitude,
                                                            self.zoom,
                                                            tiles_x,
                                                            tiles_y)
+                    ## using sets to detect sprites to be loaded and unloaded
                     new_set = set()
                     for line in new_tiles:
                         new_set |= set(line)
@@ -333,13 +328,13 @@ class GroundStation(object):
 
                     adding = new_set - self.tiles_set
                     self.display.add_sprites(*adding)
-                    #print "removing ", len(removing), "adding ", len(adding), "currently ", len(self.display.sprites)
                     self.tiles = new_tiles
-                    self.tiles_set = new_set
+                    self.tiles_set = new_set     # updated curren tiles
 
                 self.current_center_tile = new_center_tile
 
-                ### starts the tile loading and drawing
+                # tiles have been properly loaded, now we have to place them on the proper positions
+
                 tile_number = 0
                 line_number = 0
                 x_center = 0
@@ -367,7 +362,6 @@ class GroundStation(object):
                     line_number += 1
 
                 self.draw_points()  # must move out of here!
-
                 self.updated = False
             else:
                 pass
@@ -384,11 +378,9 @@ class GroundStation(object):
             if self.draw_gui_only_flag:
                 self.draw_tracked_object()  # 0ms
                 self.draw_instruments()     # 0ms
-
                 #draws mouse pointer
                 self.pointer.position(self.pointer_x - self.width/2, -self.pointer_y+self.height/2, 0.1)
                 self.draw_info()            # 5ms
-                #self.create_info_image()
 
         #@timeit
         def draw_instruments(self):
@@ -433,7 +425,6 @@ class GroundStation(object):
             time = 0
             start_time = datetime.now()
             while self.display.loop_running():
-
                 self.update_mouse()
                 if self.inputs.key_state(27):
                     self.display.destroy()
