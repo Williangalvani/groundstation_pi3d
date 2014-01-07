@@ -1,13 +1,15 @@
 #!/usr/bin/python
 from __future__ import absolute_import, division, unicode_literals
 from os.path import abspath, dirname
-from tileLoader import TileLoader
 from math import ceil
 from datetime import datetime
-from horizon.horizon import Horizon
-from comm import TelemetryReader
+from gui.textWidget import TextWidget
 import pi3d
-from utils.timeit import timeit
+
+from tileLoader import TileLoader
+from gui.horizon.horizon import Horizon
+from comm import TelemetryReader
+
 
 WHERE_AM_I = abspath(dirname(__file__))
 flat_shader = pi3d.Shader("uv_flat")
@@ -25,12 +27,8 @@ class GroundStation(object):
             self.camera = pi3d.Camera(is_3d=False)
             self.camera.was_moved = False
 
-            self.arial_font = pi3d.Font("fonts/FreeMonoBoldOblique.ttf",
-                                        (180, 0, 140, 255),
-                                        background_color=(255, 255, 255, 180))
-
-            self.arial_font.blend = True
-            self.arial_font.mipmap = True
+            self.text = TextWidget(self.display,self.camera)
+            self.text.set_update_rate(3) #update every 3 seconds
 
             self.flat_shader = pi3d.Shader("uv_flat")
 
@@ -42,7 +40,7 @@ class GroundStation(object):
             self.height = self.display.height
 
             self.last_scroll = datetime.now()    # variable to limit zooming speed
-            self.last_info_update = datetime.now()  # lets allow only 1 update each 2 seconds, to spare the cpu
+
             self.window = self.display
 
             # these are the point where the screen focuses
@@ -87,9 +85,6 @@ class GroundStation(object):
             self.updated = True
             self.tile_list_updated = True
 
-            self.gps_info = pi3d.String(font=self.arial_font, string="Now the Raspberry Pi really does rock")
-            self.gps_info.set_shader(flat_shader)
-
             pointer_img = pi3d.Texture("textures/pointer.png", blend=True)
             pointer_img.mipmap = True
             self.pointer = pi3d.Sprite(camera=self.camera, w=14, h=22, x=0, y=0, z=0.1)
@@ -123,7 +118,7 @@ class GroundStation(object):
             #shows the navball
             self.horizon = Horizon(self.camera, self.display)
 
-            #reads telemetry from the serial portarialFont
+            #reads telemetry from the serial port
             self.telemetry_reader = TelemetryReader(self)
             self.data = {}
             self.main_loop()
@@ -203,34 +198,9 @@ class GroundStation(object):
             usually takes 1~5ms
             250ms when updating!
             """
-
-            if (datetime.now() - self.last_info_update).seconds > 3:
-
-                self.gps_info._unload_opengl()
-                # string = "{0} tiles pending\nlat:{1}\nlong:{2}".format(pending,
-                #                                                        self.view_latitude,
-                #                                                        self.view_longitude)
-                string = " lat:{0}\n long:{1}".format(self.view_latitude, self.view_longitude)
-
-                for i in self.data.keys():
-                    string = string + "\n {0}:{1}".format(i, self.data[i])
-
-                self.gps_info = pi3d.String(font=self.arial_font,
-                                            string=string,
-                                            x=-self.width/2, y=self.height/2, z=3,
-                                            is_3d=False,
-                                            camera=self.camera,
-                                            justify='L',
-                                            size=0.15)
-                bounds = self.gps_info.get_bounds()
-                size = bounds[4] - bounds[1]
-                self.gps_info.position(-self.width/2,
-                                       self.height/2-size/2,
-                                       3)
-
-                self.gps_info.set_shader(self.flat_shader)
-                self.last_info_update = datetime.now()
-            self.gps_info.draw()
+            string = " lat:{0}\n long:{1}".format(self.view_latitude, self.view_longitude)
+            self.text.set_text(string)
+            self.text.update()
 
         #@timeit
         def draw_points(self):
