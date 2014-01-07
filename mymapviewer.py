@@ -4,6 +4,7 @@ from os.path import abspath, dirname
 from math import ceil
 from datetime import datetime
 from gui.Pointer import Pointer
+from gui.crosshair import Crosshair
 from gui.textWidget import TextWidget
 import pi3d
 
@@ -86,11 +87,7 @@ class GroundStation(object):
             self.updated = True
             self.tile_list_updated = True
 
-
-
-            crosshair_img = pi3d.Texture("textures/crosshair4040.png", blend=True)
-            self.crosshair = pi3d.Sprite(camera=self.camera, w=40, h=40, x=0, y=0, z=0.1)
-            self.crosshair.set_draw_details(self.flat_shader, [crosshair_img], 0, 0)
+            self.crosshair = Crosshair(self.display, self.camera)
 
             self.waypoint_img = pi3d.Texture("textures/crosshair4040.png", blend=True)
             self.waypoint_sprite = pi3d.Sprite(camera=self.camera, w=20, h=20, x=0, y=0, z=0.1)
@@ -107,7 +104,7 @@ class GroundStation(object):
 
             self.info_sprite = pi3d.Sprite(camera=self.camera, w=100, h=100, x=0, y=0, z=0.1)
 
-            self.display.add_sprites(self.crosshair)
+
             self.display.add_sprites(self.tracked_sprite)
             #the tile loader gives the tiles around the current position
             self.tile_loader = TileLoader(self)
