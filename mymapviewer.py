@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, unicode_literals
 from os.path import abspath, dirname
 from math import ceil
 from datetime import datetime
+from gui.Pointer import Pointer
 from gui.textWidget import TextWidget
 import pi3d
 
@@ -85,10 +86,7 @@ class GroundStation(object):
             self.updated = True
             self.tile_list_updated = True
 
-            pointer_img = pi3d.Texture("textures/pointer.png", blend=True)
-            pointer_img.mipmap = True
-            self.pointer = pi3d.Sprite(camera=self.camera, w=14, h=22, x=0, y=0, z=0.1)
-            self.pointer.set_draw_details(self.flat_shader, [pointer_img], 0, 0)
+
 
             crosshair_img = pi3d.Texture("textures/crosshair4040.png", blend=True)
             self.crosshair = pi3d.Sprite(camera=self.camera, w=40, h=40, x=0, y=0, z=0.1)
@@ -110,14 +108,14 @@ class GroundStation(object):
             self.info_sprite = pi3d.Sprite(camera=self.camera, w=100, h=100, x=0, y=0, z=0.1)
 
             self.display.add_sprites(self.crosshair)
-            self.display.add_sprites(self.pointer)
             self.display.add_sprites(self.tracked_sprite)
             #the tile loader gives the tiles around the current position
             self.tile_loader = TileLoader(self)
 
             #shows the navball
             self.horizon = Horizon(self.camera, self.display)
-
+            #shows the mouse pointer
+            self.pointer = Pointer(self)
             #reads telemetry from the serial port
             self.telemetry_reader = TelemetryReader(self)
             self.data = {}
@@ -151,39 +149,6 @@ class GroundStation(object):
             self.view_latitude = latitude
             self.queue_draw(tile=True)
 
-        def on_move(self, x, y):
-            dx = x-self.pointer_x
-            dy = y - self.pointer_y
-            self.pointer_x, self.pointer_y = x, y
-
-            #limit boundaries
-            if self.pointer_x > self.width:
-                self.pointer_x = self.width
-            if self.pointer_x < 0:
-                self.pointer_x = 0
-            if self.pointer_y < 0:
-                self.pointer_y = 0
-            if self.pointer_y > self.height:
-                self.pointer_y = self.height
-
-            ## check if dragging
-            if self.button == 1:
-                delta_longitude, delta_latitude = self.tile_loader.dpix_to_dcoord(dx, self.view_latitude, dy, self.zoom)
-                self.view_longitude -= delta_longitude
-                self.view_latitude -= delta_latitude
-                self.updated = True
-
-               #check map boundaries
-                if self.view_longitude > 180:
-                    self.view_longitude = 180.0
-                if self.view_longitude < -180:
-                    self.view_longitude = -180.0
-                if self.view_latitude > 85.0:
-                    self.view_latitude = 85.0
-                if self.view_latitude < -85.0:
-                    self.view_latitude = -85.0
-                #asks for update
-                self.queue_draw()
 
         def draw_circle_at(self, x_pos, y_pos):
             """draws a circle centered at (x_pos,y_pos)"""
@@ -349,7 +314,7 @@ class GroundStation(object):
                 self.draw_tracked_object()  # 0ms
                 self.draw_instruments()     # 0ms
                 #draws mouse pointer
-                self.pointer.position(self.pointer_x - self.width/2, -self.pointer_y+self.height/2, 0.1)
+                self.pointer.update()
                 self.draw_info()            # 5ms
 
         #@timeit
@@ -360,7 +325,7 @@ class GroundStation(object):
             """
             self.horizon.update()
 
-        def queue_draw(self, gui_only=False,tile=False):
+        def queue_draw(self, gui_only=False, tile=False):
             """
             schedules a draw on next tick, may be complete, or gui-only
             """
@@ -374,7 +339,26 @@ class GroundStation(object):
             """
             self.inputs.do_input_events()
             imx, imy, zoom, imh, imd = self.inputs.get_mouse_movement()
-            self.on_move(self.pointer_x+imx, self.pointer_y+imy)
+            self.pointer.on_move(self.pointer_x+imx, self.pointer_y+imy)
+
+            if self.button == 1:
+                delta_longitude, delta_latitude = self.tile_loader.dpix_to_dcoord(imx, self.view_latitude, imy, self.zoom)
+                self.view_longitude -= delta_longitude
+                self.view_latitude -= delta_latitude
+                self.queue_draw()
+
+               #check map boundaries
+                if self.view_longitude > 180:
+                    self.view_longitude = 180.0
+                if self.view_longitude < -180:
+                    self.view_longitude = -180.0
+                if self.view_latitude > 85.0:
+                    self.view_latitude = 85.0
+                if self.view_latitude < -85.0:
+                    self.view_latitude = -85.0
+                #asks for update
+                self.queue_draw()
+
             if self.inputs.key_state("BTN_LEFT"):
                 self.button = 1
             else:
