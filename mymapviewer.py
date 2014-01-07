@@ -206,7 +206,7 @@ class GroundStation(object):
                     adding = new_set - self.tiles_set
                     self.display.add_sprites(*adding)
                     self.tiles = new_tiles
-                    self.tiles_set = new_set     # updated curren tiles
+                    self.tiles_set = new_set     # updated current tiles
 
                 self.current_center_tile = new_center_tile
 
