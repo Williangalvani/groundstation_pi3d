@@ -7,6 +7,8 @@ from gui.Pointer import Pointer
 from gui.crosshair import Crosshair
 from gui.textWidget import TextWidget
 import pi3d
+from gui.tracking import TrackedObject
+from gui.waypoints import WaypointsWidget
 
 from tileLoader import TileLoader
 from gui.horizon.horizon import Horizon
@@ -14,7 +16,6 @@ from comm import TelemetryReader
 
 
 WHERE_AM_I = abspath(dirname(__file__))
-flat_shader = pi3d.Shader("uv_flat")
 
 class GroundStation(object):
 
@@ -24,13 +25,9 @@ class GroundStation(object):
                                                frames_per_second=20,
                                                background=(0, 0, 0, 255))
             pi3d.Light((0, 0, 10))
-            self.shader = pi3d.Shader("uv_flat")
 
             self.camera = pi3d.Camera(is_3d=False)
             self.camera.was_moved = False
-
-            self.text = TextWidget(self.display,self.camera)
-            self.text.set_update_rate(3) #update every 3 seconds
 
             self.flat_shader = pi3d.Shader("uv_flat")
 
@@ -58,9 +55,7 @@ class GroundStation(object):
             # this will show as an arrow on the map
             self.tracked_object_position = [0, 0, 0]
             self.tracking = True
-
-            #camera should follow tracked object?
-            self.following_tracked = True
+            self.following_tracked = True  # camera should follow tracked object?
 
             #current zoom level
             self.zoom = 10
@@ -87,35 +82,31 @@ class GroundStation(object):
             self.updated = True
             self.tile_list_updated = True
 
-            self.crosshair = Crosshair(self.display, self.camera)
-
-            self.waypoint_img = pi3d.Texture("textures/crosshair4040.png", blend=True)
-            self.waypoint_sprite = pi3d.Sprite(camera=self.camera, w=20, h=20, x=0, y=0, z=0.1)
-            self.waypoint_sprite.set_draw_details(self.flat_shader, [self.waypoint_img], 0, 0)
-            self.waypoint_sprite_list = []
-
-            tracked_img = pi3d.Texture("textures/gpspointer6060.png", blend=True)
-            self.tracked_sprite = pi3d.Sprite(camera=self.camera, w=60, h=60, x=0, y=0, z=10)
-            self.tracked_sprite.rotateToY(0)
-            self.tracked_sprite.rotateToX(0)
-            self.tracked_sprite.rotateToZ(0)
-            self.tracked_sprite.set_draw_details(self.flat_shader, [tracked_img], 0, 0)
-            self.tracked_sprite.scale(0.8, 0.8, 0.8)
-
-            self.info_sprite = pi3d.Sprite(camera=self.camera, w=100, h=100, x=0, y=0, z=0.1)
-
-
-            self.display.add_sprites(self.tracked_sprite)
             #the tile loader gives the tiles around the current position
             self.tile_loader = TileLoader(self)
 
+            #waypoint drawing widget
+            self.waypoints = WaypointsWidget(self.display, self.camera, self.tile_loader)
+            self.waypoints.set_points(self.points)
+
+            #shows details on the screen as text
+            self.text = TextWidget(self.display, self.camera)
+            self.text.set_update_rate(3)  # updates every 3 seconds
+
+            #shows the crosshair in the middle of the screen
+            self.crosshair = Crosshair(self.display, self.camera)
+            #shows the tracking arrow
+            self.tracked = TrackedObject(self.display, self.camera, self.tile_loader)
             #shows the navball
             self.horizon = Horizon(self.camera, self.display)
             #shows the mouse pointer
             self.pointer = Pointer(self)
             #reads telemetry from the serial port
             self.telemetry_reader = TelemetryReader(self)
+            #assorted telemetry received data
             self.data = {}
+
+            #starts
             self.main_loop()
 
         def zoom_in(self):
@@ -146,12 +137,6 @@ class GroundStation(object):
             self.view_latitude = latitude
             self.queue_draw(tile=True)
 
-
-        def draw_circle_at(self, x_pos, y_pos):
-            """draws a circle centered at (x_pos,y_pos)"""
-            self.waypoint_sprite.position(x_pos, -y_pos, 0.1)
-            self.waypoint_sprite.draw()
-
         #@timeit
         def draw_info(self):
             """
@@ -163,46 +148,6 @@ class GroundStation(object):
             string = " lat:{0}\n long:{1}".format(self.view_latitude, self.view_longitude)
             self.text.set_text(string)
             self.text.update()
-
-        #@timeit
-        def draw_points(self):
-            """
-            draws each of the self.points on the screen as circles
-            """
-
-            if self.updated:
-                number_of_points = len(self.points)
-                if number_of_points != len(self.waypoint_sprite_list):
-                    for i in range(number_of_points):
-                        sprite = pi3d.Sprite(camera=self.camera, w=20, h=20, x=0, y=0, z=1)
-                        sprite.set_draw_details(self.flat_shader, [self.waypoint_img], 0, 0)
-                        self.waypoint_sprite_list.append(sprite)
-                    self.display.add_sprites(*self.waypoint_sprite_list)
-                for point, sprite in zip(self.points, self.waypoint_sprite_list):
-                    x, y = self.tile_loader.dcord_to_dpix(point[0],
-                                                          self.view_longitude,
-                                                          point[1],
-                                                          self.view_latitude,
-                                                          self.zoom)
-                    sprite.position(x, -y, 10)
-
-        #@timeit
-        def draw_tracked_object(self):
-            """
-            draws the tracked object on its position, with proper orientation, as an arrow
-
-            takes ~0ms
-            """
-            if self.tracking:
-                point = self.tracked_object_position
-                x, y = self.tile_loader.dcord_to_dpix(point[0],
-                                                      self.view_longitude,
-                                                      point[1],
-                                                      self.view_latitude,
-                                                      self.zoom)
-                self.tracked_sprite.position(x, -y, 1)
-                self.tracked_sprite.rotateToZ(-point[2])
-                self.tracked_sprite.draw()
 
         def set_tracked_position(self, longitude, latitude, yaw):
             """
@@ -293,8 +238,8 @@ class GroundStation(object):
                     tile_number = 0
                     line_number += 1
 
-                self.draw_points()  # must move out of here!
-                self.updated = False
+                #self.draw_points()  # must move out of here!
+
             else:
                 pass
 
@@ -304,13 +249,22 @@ class GroundStation(object):
             """
             self.draw_tiles()
             self.draw_gui()
+            self.updated = False
 
         #@timeit
         def draw_gui(self):
             if self.draw_gui_only_flag:
-                self.draw_tracked_object()  # 0ms
+                self.tracked.draw(self.tracking,
+                                  self.tracked_object_position,
+                                  self.view_longitude,
+                                  self.view_latitude,
+                                  self.zoom)
+
                 self.draw_instruments()     # 0ms
-                #draws mouse pointer
+                self.waypoints.draw_points(self.updated,
+                                           self.view_longitude,
+                                           self.view_latitude,
+                                           self.zoom)
                 self.pointer.update()
                 self.draw_info()            # 5ms
 
