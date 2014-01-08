@@ -1,13 +1,14 @@
+from tileLoader import dcord_to_dpix
+
 __author__ = 'will'
 
 import pi3d
 
 
 class TrackedObject(object):
-    def __init__(self, display, camera, tile_loader):
+    def __init__(self, display, camera):
         self.display = display
         self.camera = camera
-        self.tile_loader = tile_loader
 
         self.shader = pi3d.Shader("uv_flat")   # must unify the shaders later, not sure if affecting performance
 
@@ -22,11 +23,11 @@ class TrackedObject(object):
 
     def draw(self, tracking, tracked_object_position, longitude, latitude, zoom):
         if tracking:
-            x, y = self.tile_loader.dcord_to_dpix(tracked_object_position[0],
-                                                  longitude,
-                                                  tracked_object_position[1],
-                                                  latitude,
-                                                  zoom)
+            x, y = dcord_to_dpix(tracked_object_position[0],
+                                 longitude,
+                                 tracked_object_position[1],
+                                 latitude,
+                                 zoom)
             self.tracked_sprite.position(x, -y, 1)
             self.tracked_sprite.rotateToZ(-tracked_object_position[2])
             self.tracked_sprite.draw()

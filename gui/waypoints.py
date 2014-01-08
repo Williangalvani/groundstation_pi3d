@@ -1,11 +1,12 @@
+from tileLoader import dcord_to_dpix
+
 __author__ = 'will'
 import pi3d
 
 class WaypointsWidget(object):
-    def __init__(self, display, camera,tile_loader):
+    def __init__(self, display, camera):
         self.display = display
         self.camera = camera
-        self.tile_loader = tile_loader
 
         self.shader = pi3d.Shader("uv_flat")   # must unify the shaders later, not sure if affecting performance
 
@@ -41,9 +42,9 @@ class WaypointsWidget(object):
                     self.waypoint_sprite_list.append(sprite)
                 self.display.add_sprites(*self.waypoint_sprite_list)
             for point, sprite in zip(self.points, self.waypoint_sprite_list):
-                x, y = self.tile_loader.dcord_to_dpix(point[0],
-                                                      longitude,
-                                                      point[1],
-                                                      latitude,
-                                                      zoom)
+                x, y = dcord_to_dpix(point[0],
+                                     longitude,
+                                     point[1],
+                                     latitude,
+                                     zoom)
                 sprite.position(x, -y, 10)

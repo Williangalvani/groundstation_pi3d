@@ -10,7 +10,7 @@ import pi3d
 from gui.tracking import TrackedObject
 from gui.waypoints import WaypointsWidget
 
-from tileLoader import TileLoader
+from tileLoader import TileLoader, dpix_to_dcoord
 from gui.horizon.horizon import Horizon
 from comm import TelemetryReader
 
@@ -27,6 +27,7 @@ class GroundStation(object):
             pi3d.Light((0, 0, 10))
 
             self.camera = pi3d.Camera(is_3d=False)
+
             self.camera.was_moved = False
 
             self.flat_shader = pi3d.Shader("uv_flat")
@@ -86,7 +87,7 @@ class GroundStation(object):
             self.tile_loader = TileLoader(self)
 
             #waypoint drawing widget
-            self.waypoints = WaypointsWidget(self.display, self.camera, self.tile_loader)
+            self.waypoints = WaypointsWidget(self.display, self.camera)
             self.waypoints.set_points(self.points)
 
             #shows details on the screen as text
@@ -96,7 +97,7 @@ class GroundStation(object):
             #shows the crosshair in the middle of the screen
             self.crosshair = Crosshair(self.display, self.camera)
             #shows the tracking arrow
-            self.tracked = TrackedObject(self.display, self.camera, self.tile_loader)
+            self.tracked = TrackedObject(self.display, self.camera)
             #shows the navball
             self.horizon = Horizon(self.camera, self.display)
             #shows the mouse pointer
@@ -183,7 +184,7 @@ class GroundStation(object):
             span_y = self.height
             tiles_x = int(ceil(span_x/256.0))
             tiles_y = int(ceil(span_y/256.0))
-            if self.updated:
+            if self.updated or self.tile_list_updated:
                 # checks if the centered tile changed, so the tile set has to be reloaded
                 new_center_tile = self.tile_loader.coord_to_gmap_tile_int(self.view_longitude,
                                                                           self.view_latitude,
@@ -293,7 +294,7 @@ class GroundStation(object):
             self.pointer.on_move(self.pointer_x+imx, self.pointer_y+imy)
 
             if self.button == 1:
-                delta_longitude, delta_latitude = self.tile_loader.dpix_to_dcoord(imx, self.view_latitude, imy, self.zoom)
+                delta_longitude, delta_latitude = dpix_to_dcoord(imx, self.view_latitude, imy, self.zoom)
                 self.view_longitude -= delta_longitude
                 self.view_latitude -= delta_latitude
                 self.queue_draw()
@@ -338,7 +339,7 @@ class GroundStation(object):
                 self.draw()
                 new_time = datetime.now()
                 time = ((new_time-start_time).microseconds/1000000.0) * 0.1 + time*0.9
-                print "frame took {0:.2f} avg: {1:.2f} , fps:{2:.2f}".format(((new_time-start_time).microseconds/1000000.0), time, 1.0/time)
+                #print "frame took {0:.2f} avg: {1:.2f} , fps:{2:.2f}".format(((new_time-start_time).microseconds/1000000.0), time, 1.0/time)
                 start_time = new_time
 
 if __name__ == '__main__':
