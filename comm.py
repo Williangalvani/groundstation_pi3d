@@ -1,3 +1,5 @@
+from datetime import datetime
+
 __author__ = 'will'
 
 from messages import *
@@ -6,6 +8,8 @@ import os
 import time
 import threading
 import config
+import traceback
+
 
 serial_available = False
 bluetooth_available = False
@@ -20,9 +24,12 @@ try:
     import bluetooth
 
     bluetooth_available = True
-except:
-    pass
+except Exception, e:
+    print e
 
+print " bluetooth: ", bluetooth_available
+class TimeOutException(BaseException):
+    pass
 
 class FuncThread(threading.Thread):
     def __init__(self, target, *args):
@@ -39,6 +46,7 @@ class TelemetryReader():
     def __init__(self, window):
         self.ser = None
         self.sock = None
+        self.last_mac = None
         if serial_available or bluetooth_available:
             self.run = True
             self.connected = False
@@ -60,6 +68,23 @@ class TelemetryReader():
         else:
             return self.sock.recv(bytes)
 
+    def btread(self,bytes):
+        data = bytearray()
+        start = datetime.now()
+        while len(data) <bytes:
+            try:
+                newdata = self.sock.recv(1)
+                data += newdata
+                #print data
+                if not newdata:
+                    time.sleep(0.001)
+            except Exception, e:
+                print "raised ", e
+            if (datetime.now()-start).seconds>2:
+                raise TimeOutException
+        return data
+
+
     def write(self, data):
         if self.ser:
             return self.ser.write(data)
@@ -67,38 +92,64 @@ class TelemetryReader():
             return self.sock.send(data)
 
     def flush_input(self):
+        return
         data = None
         if self.ser:
             self.ser.flushInput()
-        # else:
-        #     try:
-        #         self.sock.set_timeout(0.1)
-        #         data = self.sock.recv(1000)
-        #         self.sock.set_timeout(1.0)
-        #     except:
-        #         pass
-        #     print "dropped" , data
+        else:
+             try:
+                 #self.sock.set_timeout(0.1)
+                 data = self.sock.recv(1000)
+                 #self.sock.set_timeout(1.0)
+             except:
+                 pass
+             print "dropped", data
+             print data
+
+    def btconnect(self,device_mac):
+
+        self.last_mac = device_mac
+        if self.sock:
+            self.sock.close()
+        time.sleep(0.5)
+        self.sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+        self.sock.connect((device_mac, 1))
+        self.sock.settimeout(1.0)
+        try:
+            self.sock.recv(1024)
+        except Exception, e:
+            print e
+        self.sock.settimeout(0.1)
+        #self.sock.setblocking(False)
+        #print dir(self.sock)
+        print "connected to bluetooth device ", device_mac
+        self.ser = None
+        self.connected = True
 
     def find_device(self):
         while self.run and not self.connected:
             if bluetooth_available:
+                if self.last_mac:
+                    for i in range(100):
+                        print "lost connection? trying to reconnect to last mac, try:" , i
+                        try:
+                            self.btconnect(self.last_mac)
+                            break
+                        except Exception, e:
+                            print e
+                            print traceback.format_exc()
+
+                        time.sleep(0.3)
                 devices_macs = bluetooth.discover_devices()
+                print "found: " , devices_macs
                 for device_mac in devices_macs:
                     if device_mac in config.macs:
-                        self.sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-                        self.sock.connect((device_mac, 1))
-                        #print dir(self.sock)
-                        self.ser = None
-                        self.connected = True
+                        self.btconnect(device_mac)
                         return
+                for device_mac in devices_macs:
                     if bluetooth.lookup_name(device_mac) in config.names:
-                        time.sleep(1)
-                        self.sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-                        self.sock.connect((device_mac, 1))
-                        #print dir(self.sock)
-                        print "connected to bluetooth device ", device_mac
-                        self.ser = None
-                        self.connected = True
+                        self.btconnect(device_mac)
+                        #time.sleep(2)
                         return
             try:
                 self.sock = None
@@ -112,23 +163,22 @@ class TelemetryReader():
                 time.sleep(3)
 
     def loop(self):
-        self.find_device()
+        while self.run:
+            self.find_device()
 
-        if self.connected:
-            try:
-                while self.run:
-                    for i in range(10):
-                        if i % 3 == 0:
-                            self.read_gps()
+            if self.connected:
+                try:
+                    while self.connected:
+                        for i in range(10):
+                            if i % 3 == 0:
+                                self.read_gps()
+                            else:
+                                self.read_attitude()
 
-                        else:
-                            self.read_attitude()
-
-
-                        time.sleep(0.05)
-            except Exception as e:
-                self.connected = False
-                print (e)
+                            time.sleep(0.05)
+                except Exception as e:
+                    self.connected = False
+                    print "asd",(e)
 
     def stop(self):
         self.run = False
@@ -172,7 +222,6 @@ class TelemetryReader():
         #print checksum, receivedChecksum
         if command != expectedCommand:
             print( "commands dont match!", command, expectedCommand)
-            self.flush_input()
             if receivedChecksum == checksum:          # was not supposed to arrive now, but data is data!
                 self.try_handle_response(command,data)
             return None
@@ -183,6 +232,7 @@ class TelemetryReader():
             return None
 
     def MSPquery(self, command):
+        self.flush_input()
         o = bytearray('$M<')
         c = 0
         o += chr(0)
@@ -236,7 +286,7 @@ class TelemetryReader():
             roll = self.decode16(answer[0:2]) / 10.0
             pitch = self.decode16(answer[2:4]) / 10.0
             mag = self.decode16(answer[4:6])
-            self.window.set_attitude(roll,pitch,mag)
+            self.window.set_attitude(roll, pitch, mag)
             return roll, pitch, mag
 
         elif command == MSP_RAW_GPS:
@@ -245,7 +295,7 @@ class TelemetryReader():
             latitude = self.decode32(lat_list) / 10000000.0
             longitude = self.decode32(long_list) / 10000000.0
             #print longitude,latitude, answer[0:2]
-            self.window.set_tracked_position(latitude, longitude, self.attitude[2])
+            self.window.set_tracked_position(longitude, latitude, self.attitude[2])
             self.window.set_data("gps_sats", answer[1])
             self.window.set_data("gps_fix", answer[0])
             return longitude, latitude, answer[1]
@@ -290,16 +340,15 @@ if __name__ == '__main__':
     sock.send('!hw\r')
     try:
         print sock.recv(100)
-    except:
-        pass
-    print MSPquery(sock, MSP_IDENT)
-    print MSPquery(sock, MSP_ATTITUDE)
-    print MSPquery(sock, MSP_RAW_GPS)
-    print MSPquery(sock, MSP_STATUS)
+    except Exception, e:
+        print "exception " ,e
+    # print MSPquery(sock, MSP_IDENT)
+    # print MSPquery(sock, MSP_ATTITUDE)
+    # print MSPquery(sock, MSP_RAW_GPS)
+    # print MSPquery(sock, MSP_STATUS)
 
     sock.send("x")
     print 'Sent data'
 
     data = sock.recv(1)
     print 'received [%s]' % data
-
