@@ -20,15 +20,24 @@ The serial communication finds the first available port, and connects. Then it t
 
 ### Requirements: ###
 Pi3D (https://github.com/tipam/pi3d#setup-on-the-raspberry-pi)
+  -  PIL
+  -  pyGObject
 pyserial
 
 
-just do :
->sudo pip install pi3d   
+### Installing ###
+to install pil and pygobject:
+>sudo apt-get install python-imaging python-gobject
 
-if it doesn't work, try:
+if you dont have pip installed:
+>sudo apt-get install python-pip
+
+Then, to install pi3d:
 
 >sudo pip install --pre pi3d"
+
+now pyserial, which must be version 2.7+: 
+>sudo pip install pyserial --upgrade
 
 ### Running ###
 To run:
@@ -36,7 +45,6 @@ To run:
 >python mymapviewer.py
 
 Noting that the code is quite ugly, it'll probably be fixed after everything works.
-
 
 ### Bluetooth ###
 
