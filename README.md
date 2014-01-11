@@ -21,12 +21,13 @@ The serial communication finds the first available port, and connects. Then it t
 ### Requirements: ###
 Pi3D (https://github.com/tipam/pi3d#setup-on-the-raspberry-pi)
   -  PIL
+  -  pyGObject
 pyserial
 
 
 ### Installing ###
-to install pil:
->sudo apt-get install python-imaging
+to install pil and pygobject:
+>sudo apt-get install python-imaging python-gobject
 
 if you dont have pip installed:
 >sudo apt-get install python-pip
