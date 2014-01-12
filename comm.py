@@ -54,6 +54,7 @@ class TelemetryReader():
             self.thread = FuncThread(self.loop)
             self.thread.start()
             self.attitude = [0, 0, 0]
+            self.buffer = ""
         else:
             print("could not load serial module!")
 
@@ -66,23 +67,31 @@ class TelemetryReader():
         if self.ser:
             return self.ser.read(bytes)
         else:
-            return self.sock.recv(bytes)
+            return self.btread(bytes)
 
     def btread(self,bytes):
-        data = bytearray()
-        start = datetime.now()
-        while len(data) <bytes:
+        newdata = ""
+        result = None
+        times = 0
+        while not result:
             try:
-                newdata = self.sock.recv(1)
-                data += newdata
-                #print data
-                if not newdata:
-                    time.sleep(0.001)
+                newdata = self.sock.recv(10)
             except Exception, e:
-                print "raised ", e
-            if (datetime.now()-start).seconds>2:
-                raise TimeOutException
-        return data
+                pass#print "nothing to receive ", e
+            self.buffer += newdata
+
+            result = self.buffer[:bytes]
+            # if len(self.buffer):
+            #     print self.buffer, len(self.buffer), len(result) , bytes
+            # else:
+            if not len(self.buffer):
+                time.sleep(0.001)
+            #print "returning " , result
+            self.buffer = self.buffer[bytes:]
+            times+=1
+            if times >=10:
+                raise TimeOutException()
+        return result
 
 
     def write(self, data):
@@ -115,12 +124,12 @@ class TelemetryReader():
         self.sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
         self.sock.connect((device_mac, 1))
         self.sock.settimeout(1.0)
-        try:
-            self.sock.recv(1024)
-        except Exception, e:
-            print e
-        self.sock.settimeout(0.1)
-        #self.sock.setblocking(False)
+        # try:
+        #     self.sock.recv(1024)
+        # except Exception, e:
+        #     print e
+        #self.sock.settimeout(0.1)
+        self.sock.setblocking(False)
         #print dir(self.sock)
         print "connected to bluetooth device ", device_mac
         self.ser = None
@@ -167,6 +176,7 @@ class TelemetryReader():
             self.find_device()
 
             if self.connected:
+
                 try:
                     while self.connected:
                         for i in range(10):
@@ -178,7 +188,7 @@ class TelemetryReader():
                             time.sleep(0.05)
                 except Exception as e:
                     self.connected = False
-                    print "asd",(e)
+                    print "asd" (e)
 
     def stop(self):
         self.run = False
@@ -202,9 +212,19 @@ class TelemetryReader():
             return [port[0] for port in list_ports.comports()]
 
     def receiveAnswer(self, expectedCommand):
-        header = self.read(3)
-        if '$M>' not in header:
-            return None
+        header = "000"
+        while "$M>" not in header:
+            new = ""
+            try:
+                new = self.read(1)
+            except TimeOutException:
+                print "timeout!"
+                return None
+            header += new
+            if len(header) > 3:
+                header = header[1:]
+            #print "header:", header
+        #print "got header"
         size = ord(self.read())
         command = ord(self.read())
         data = []
@@ -221,11 +241,13 @@ class TelemetryReader():
         #print 'data' , data
         #print checksum, receivedChecksum
         if command != expectedCommand:
-            print( "commands dont match!", command, expectedCommand)
+            print( "commands dont match!", command, expectedCommand, len(self.buffer))
             if receivedChecksum == checksum:          # was not supposed to arrive now, but data is data!
                 self.try_handle_response(command,data)
+                self.flush_input()
             return None
         if checksum == receivedChecksum:
+            print data
             return data
         else:
             print ('lost packet!')
