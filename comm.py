@@ -213,25 +213,29 @@ class TelemetryReader():
 
     def receiveAnswer(self, expectedCommand):
         time.sleep(0.001)  #print self.buffer
-        print self.buffer
-        if len(self.buffer) > 15:
-            self.buffer = "$M>" + self.buffer.rsplit("$M>",1)[-1]
-        header = "000"
-        #print self.buffer
-        while "$M>" not in header:
-            new = ""
-            try:
-                new = self.read(1)
-            except TimeOutException:
-                print "timeout!"
-                return None
-            header += new
-            if len(header) > 3:
-                header = header[1:]
-            #print "header:", header
-        #print "got header"
-        size = ord(self.read())
-        command = ord(self.read())
+        command = None
+        while command != expectedCommand:
+            print self.buffer
+            if len(self.buffer) > 15:
+                self.buffer = "$M>" + self.buffer.rsplit("$M>",1)[-1]
+            header = "000"
+            #print self.buffer
+            while "$M>" not in header:
+                new = ""
+                try:
+                    new = self.read(1)
+                except TimeOutException:
+                    print "timeout!"
+                    return None
+                header += new
+                if len(header) > 3:
+                    header = header[1:]
+                #print "header:", header
+            #print "got header"
+            size = ord(self.read())
+            command = ord(self.read())
+            if command != expectedCommand:
+                print "wrong command!"
         data = []
         for i in range(size):
             data.append(ord(self.read()))
@@ -274,7 +278,11 @@ class TelemetryReader():
             #print "writing" , o
             self.write(o)
             #self.flush_input()
-            answer = self.receiveAnswer(command)
+            try:
+                answer = self.receiveAnswer(command)
+            except TimeOutException:
+                print "timeout!"
+
             #print answer
         return answer
 
