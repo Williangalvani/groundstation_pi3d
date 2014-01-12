@@ -89,7 +89,7 @@ class TelemetryReader():
             #print "returning " , result
             self.buffer = self.buffer[bytes:]
             times+=1
-            if times >=10:
+            if times >=100:
                 raise TimeOutException()
         return result
 
@@ -113,7 +113,7 @@ class TelemetryReader():
              except:
                  pass
              print "dropped", data
-             print data
+             #print data
 
     def btconnect(self,device_mac):
 
@@ -180,7 +180,7 @@ class TelemetryReader():
                 try:
                     while self.connected:
                         for i in range(10):
-                            if i % 3 == 0:
+                            if i % 2 == 0:
                                 self.read_gps()
                             else:
                                 self.read_attitude()
@@ -188,7 +188,7 @@ class TelemetryReader():
                             time.sleep(0.05)
                 except Exception as e:
                     self.connected = False
-                    print "asd" (e)
+                    print "asd" , (e)
 
     def stop(self):
         self.run = False
@@ -212,7 +212,12 @@ class TelemetryReader():
             return [port[0] for port in list_ports.comports()]
 
     def receiveAnswer(self, expectedCommand):
+        time.sleep(0.001)  #print self.buffer
+        print self.buffer
+        if len(self.buffer) > 15:
+            self.buffer = "$M>" + self.buffer.rsplit("$M>",1)[-1]
         header = "000"
+        #print self.buffer
         while "$M>" not in header:
             new = ""
             try:
@@ -244,7 +249,7 @@ class TelemetryReader():
             print( "commands dont match!", command, expectedCommand, len(self.buffer))
             if receivedChecksum == checksum:          # was not supposed to arrive now, but data is data!
                 self.try_handle_response(command,data)
-                self.flush_input()
+                #self.flush_input()
             return None
         if checksum == receivedChecksum:
             print data
