@@ -74,25 +74,21 @@ class TelemetryReader():
         result = None
         times = 0
         while not result:
-            try:
-                newdata = self.sock.recv(10)
-            except Exception, e:
-                pass#print "nothing to receive ", e
-            self.buffer += newdata
+            if len(self.buffer)<bytes:
+                try:
+                    newdata = self.sock.recv(10)
+                except Exception, e:
+                    #print "nothing to receive ", e
+                    time.sleep(0.07)
+                self.buffer += newdata
 
-            result = self.buffer[:bytes]
-            # if len(self.buffer):
-            #     print self.buffer, len(self.buffer), len(result) , bytes
-            # else:
-            if not len(self.buffer):
-                time.sleep(0.001)
-            #print "returning " , result
-            self.buffer = self.buffer[bytes:]
-            times+=1
-            if times >=100:
+            if len(self.buffer):
+                result = self.buffer[:bytes]
+                self.buffer = self.buffer[bytes:]
+            times += 1
+            if times >= 100:
                 raise TimeOutException()
         return result
-
 
     def write(self, data):
         if self.ser:
@@ -230,8 +226,6 @@ class TelemetryReader():
                 header += new
                 if len(header) > 3:
                     header = header[1:]
-                #print "header:", header
-            #print "got header"
             size = ord(self.read())
             command = ord(self.read())
             if command != expectedCommand:
