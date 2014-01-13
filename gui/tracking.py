@@ -30,4 +30,5 @@ class TrackedObject(object):
                                  zoom)
             self.tracked_sprite.position(x, -y, 1)
             self.tracked_sprite.rotateToZ(-tracked_object_position[2])
+            print -tracked_object_position[2]
             self.tracked_sprite.draw()

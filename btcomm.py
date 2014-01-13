@@ -275,8 +275,9 @@ class TelemetryReader():
             roll = self.decode16(answer[0:2]) / 10.0
             pitch = self.decode16(answer[2:4]) / 10.0
             mag = self.decode16(answer[4:6])
+            self.attitude = (roll,pitch,mag)
             self.window.set_attitude(roll, pitch, mag)
-            print roll, pitch, mag
+            #print roll, pitch, mag
             return roll, pitch, mag
 
         elif command == MSP_RAW_GPS:
@@ -288,7 +289,7 @@ class TelemetryReader():
             self.window.set_tracked_position(longitude, latitude, self.attitude[2])
             self.window.set_data("gps_sats", answer[1])
             self.window.set_data("gps_fix", answer[0])
-            print longitude, latitude
+            #print longitude, latitude
             return longitude, latitude, answer[1]
 
 
