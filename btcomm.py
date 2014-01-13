@@ -52,9 +52,9 @@ class TelemetryReader():
             self.send_thread = FuncThread(self.write_loop)
             self.read_thread = FuncThread(self.read_loop)
             self.receive_thread = FuncThread(self.receive_loop)
-            #self.send_thread.start()
-            #self.read_thread.start()
-            #self.receive_thread.start()
+            self.send_thread.start()
+            self.read_thread.start()
+            self.receive_thread.start()
             self.attitude = [0, 0, 0]
 
         else:
@@ -156,7 +156,7 @@ class TelemetryReader():
                     print "nothing to receive ", e
 
             self.buffer += newdata
-            time.sleep(0.1)
+            time.sleep(0.05)
 
     def write_loop(self):
         while self.run:
