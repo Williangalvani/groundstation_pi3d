@@ -339,7 +339,7 @@ class GroundStation(object):
                 self.draw()
                 new_time = datetime.now()
                 time = ((new_time-start_time).microseconds/1000000.0) * 0.1 + time*0.9
-                print "frame took {0:.2f} avg: {1:.2f} , fps:{2:.2f}".format(((new_time-start_time).microseconds/1000000.0), time, 1.0/time)
+                #print "frame took {0:.2f} avg: {1:.2f} , fps:{2:.2f}".format(((new_time-start_time).microseconds/1000000.0), time, 1.0/time)
                 start_time = new_time
 
 if __name__ == '__main__':
